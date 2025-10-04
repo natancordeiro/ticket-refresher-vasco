@@ -22,7 +22,7 @@ class BrowserClient:
         co.set_download_path(self.cfg.download_dir)
 
         # Modo headless + flags necessárias para Linux/containers
-        co.set_headless(self.cfg.headless)
+        co.headless(self.cfg.headless)
         if self.cfg.headless:
             co.set_argument('--headless=new')
         # Flags recomendadas em container Linux para evitar falhas de sandbox e /dev/shm
