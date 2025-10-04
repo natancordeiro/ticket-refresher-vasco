@@ -25,25 +25,30 @@ class CartService:
         time.sleep(2)
 
     def open_checkout_until_qr(self) -> str:
-        """Clica em 'CONTINUAR PARA CHECKOUT...' e depois 'Seguir para o pagamento' e espera QR."""
+        """Clica em 'CONTINUAR PARA CHECKOUT...' e, se necessário, 'Seguir para o pagamento';
+        porém trata o caso em que o site já cai direto no QR Code."""
         with timed("Checkout | continuar para checkout seguro"):
             btn = self.page.ele(self.SEL_CONTINUAR_CHECKOUT, timeout=self.cfg.element_timeout)
             if not btn:
                 raise ElementNotFoundError("Botão 'CONTINUAR PARA CHECKOUT SEGURO' não encontrado.")
             btn.click()
 
-        time.sleep(3)
+        import time as _t
+        _t.sleep(1)
 
-        with timed("Checkout | seguir para pagamento"):
-            btn2 = self.page.ele(self.SEL_SEGUIR_PAGAMENTO, timeout=self.cfg.element_timeout)
-            if not btn2:
-                raise ElementNotFoundError("Botão 'Seguir para o pagamento' não encontrado.")
-            time.sleep(1)
-            btn2.click()
+        # Detectar se já caiu no QR ou se precisa clicar em 'Seguir para o pagamento'
+        with timed("Checkout | detectar próximo passo"):
+            qr_fast = self.page.ele(self.SEL_QR_IMG, timeout=3)
+            if qr_fast:
+                logger.info("Checkout | QR já presente; pulando 'Seguir para o pagamento'.")
+            else:
+                btn2 = self.page.ele(self.SEL_SEGUIR_PAGAMENTO, timeout=5)
+                if btn2:
+                    btn2.click()
+                else:
+                    logger.warning("Checkout | 'Seguir para o pagamento' ausente; aguardando QR diretamente.")
 
-        time.sleep(3)
-
-        # Aguardar QR
+        # Aguardar QR (caminho comum e fallback do caso acima)
         with timed("Pagamento | aguardando QR"):
             qr = self.page.ele(self.SEL_QR_IMG, timeout=self.cfg.element_timeout)
             if not qr:
