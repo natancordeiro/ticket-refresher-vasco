@@ -10,7 +10,7 @@ class BrowserClient:
         self.cfg = cfg
         self.page = self._create_page()
 
-    def _create_page(self) -> WebPage:
+    def _create_page(self):
         co = ChromiumOptions()
 
         # Caminho do Chromium no Debian/Ubuntu (ajuste se necessário):
