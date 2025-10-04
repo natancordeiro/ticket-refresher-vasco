@@ -1,4 +1,4 @@
-from DrissionPage import ChromiumOptions, WebPage
+from DrissionPage import ChromiumOptions, Chromium
 from ticket_refresher.config import AppConfig
 from ticket_refresher.logging_config import logger
 from ticket_refresher.timing import timed
@@ -23,13 +23,13 @@ class BrowserClient:
 
         # Modo headless + flags necessárias para Linux/containers
         co.headless(self.cfg.headless)
-        if self.cfg.headless:
-            co.set_argument('--headless=new')
+
         # Flags recomendadas em container Linux para evitar falhas de sandbox e /dev/shm
         co.set_argument('--no-sandbox')
         co.set_argument('--disable-dev-shm-usage')
 
-        page = WebPage(chromium_options=co, timeout=self.cfg.navigation_timeout)
+        browser = Chromium(addr_or_opts=co)
+        page = browser.latest_tab
         logger.info("Browser inicializado.")
         return page
 
