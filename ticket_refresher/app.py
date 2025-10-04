@@ -33,6 +33,8 @@ class App:
         with timed("Ciclo | navegação para HOME"):
             self.browser.goto(self.cfg.base_url)
 
+        self.auth.accept_cookies_if_present()
+
         # Se precisar, efetua login
         if not self.auth.is_logged_in():
             logger.info("Login requerido. Iniciando fluxo de autenticação.")
@@ -50,11 +52,8 @@ class App:
         src = checkout_op()
 
         # Persistência mínima do QR + pausa curta
-        from ticket_refresher.parsers.cart_parsers import get_qr_data_uri
         img_ele = self.browser.page.ele('css:img.imply-pay-qrcode', timeout=self.cfg.element_timeout)
-        if img_ele:
-            self.payment.capture_and_persist_qr(img_ele)
-        else:
+        if not img_ele:
             logger.warning("QR encontrado anteriormente, mas não mais presente para persistência de imagem.")
 
         self.payment.gentle_wait_after_qr()

@@ -32,13 +32,16 @@ class CartService:
                 raise ElementNotFoundError("Botão 'CONTINUAR PARA CHECKOUT SEGURO' não encontrado.")
             btn.click()
 
-        time.sleep(1)
+        time.sleep(3)
 
         with timed("Checkout | seguir para pagamento"):
             btn2 = self.page.ele(self.SEL_SEGUIR_PAGAMENTO, timeout=self.cfg.element_timeout)
             if not btn2:
                 raise ElementNotFoundError("Botão 'Seguir para o pagamento' não encontrado.")
+            time.sleep(1)
             btn2.click()
+
+        time.sleep(3)
 
         # Aguardar QR
         with timed("Pagamento | aguardando QR"):

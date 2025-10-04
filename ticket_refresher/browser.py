@@ -12,8 +12,9 @@ class BrowserClient:
 
     def _create_page(self) -> WebPage:
         co = ChromiumOptions()
-        co.set_headless(self.cfg.headless)
-        co.set_user_data_path(self.cfg.user_data_dir)
+        co.auto_port()
+        co.headless(self.cfg.headless)
+        # co.set_user_data_path(self.cfg.user_data_dir)
         co.set_download_path(self.cfg.download_dir)
         page = WebPage(chromium_options=co, timeout=self.cfg.navigation_timeout)
         logger.info("Browser inicializado.")
@@ -34,7 +35,7 @@ class BrowserClient:
         return self.page.url
 
     def screenshot(self, path: str):
-        self.page.save_screenshot(path)
+        self.page.get_screenshot(path)
         logger.info(f"Persistência | sink=arquivo | arquivo={path}")
 
     def close(self):

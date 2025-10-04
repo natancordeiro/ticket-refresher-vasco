@@ -8,12 +8,13 @@ class AuthService:
     """Responsável por login e verificação de sessão."""
 
     # Selectors
+    SEL_COOKIES_BTN = 'xpath://button[contains(@class,"button-accept-cookie")]'
     SEL_LOGIN_ANCHOR = 'xpath://a[@ng-click="login(true,null)" and not(@ng-show="User")]'
     SEL_PUBLICO_GERAL_LINK = 'xpath://a[.//p[contains(text(),"Público Geral - Jogos")]]'
     SEL_INPUT_EMAIL = 'xpath://input[@type="email" and @name="_username"]'
     SEL_INPUT_PASSWORD = 'xpath://input[@name="_password"]'
     SEL_BTN_LOGIN = 'xpath://button[.//span[normalize-space()="Login"]]'
-    SEL_USER_ANCHOR = 'xpath://a[@ng-show="User"]'
+    SEL_USER_ANCHOR = 'xpath://span[@ng-if="User.dsctipo"]'
 
     FACIAL_URL = "https://vasco.eleventickets.com/FacialRecognition"
     HOME_FRAGMENT = "https://vasco.eleventickets.com/#!/home"
@@ -23,14 +24,25 @@ class AuthService:
         self.browser = browser
         self.cfg = cfg
 
+    def accept_cookies_if_present(self):
+        """Clica no botão 'ACEITAR TODOS OS COOKIES' se estiver visível."""
+        btn = self.page.ele(self.SEL_COOKIES_BTN, timeout=2)
+        if btn:
+            btn.click()
+            from time import sleep
+            sleep(0.5)
+            logger.info("Cookies | ACEITAR TODOS OS COOKIES clicado.")
+
     def is_logged_in(self) -> bool:
         anchor = self.page.ele(self.SEL_USER_ANCHOR, timeout=1)
-        return anchor is not None
+        if anchor:
+            return anchor
+        else:
+            return False
 
     def log_username_if_present(self):
-        from ticket_refresher.parsers.auth_parsers import parse_username_from_user_anchor
         anchor = self.page.ele(self.SEL_USER_ANCHOR, timeout=1)
-        username = parse_username_from_user_anchor(anchor)
+        username = anchor.parent().text.strip() if anchor else None
         if username:
             logger.info(f"Login verificado | usuário='{username}'")
         else:
@@ -84,8 +96,11 @@ class AuthService:
                 self.browser.goto(self.cfg.base_url)
                 time.sleep(1)
 
+        time.sleep(5)
+        self.browser.goto(self.cfg.cart_url)
+
         # Checagem final
-        time.sleep(2)
+        time.sleep(3)
         if not self.is_logged_in():
             # Screenshot para diagnóstico
             self.browser.screenshot(f"{self.cfg.screenshot_dir}/login_failed.png")
