@@ -1,0 +1,6 @@
+drissionpage==4.1.0
+pydantic==2.9.2
+python-dotenv==1.0.1
+PyYAML==6.0.2
+colorlog==6.8.2
+tenacity==9.0.0
