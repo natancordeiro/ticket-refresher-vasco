@@ -1,4 +1,4 @@
-from drissionpage import ChromiumOptions, WebPage
+from DrissionPage import ChromiumOptions, WebPage
 from ticket_refresher.config import AppConfig
 from ticket_refresher.logging_config import logger
 from ticket_refresher.timing import timed
