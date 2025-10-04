@@ -1,4 +1,4 @@
-from DrissionPage import ChromiumOptions, WebPage
+from drissionpage import ChromiumOptions, WebPage
 from ticket_refresher.config import AppConfig
 from ticket_refresher.logging_config import logger
 from ticket_refresher.timing import timed
@@ -12,10 +12,23 @@ class BrowserClient:
 
     def _create_page(self) -> WebPage:
         co = ChromiumOptions()
-        co.auto_port()
-        co.headless(self.cfg.headless)
-        # co.set_user_data_path(self.cfg.user_data_dir)
+
+        # Caminho do Chromium no Debian/Ubuntu (ajuste se necessário):
+        # em imagens Debian/Ubuntu recentes o binário costuma ser /usr/bin/chromium
+        co.set_browser_path('/usr/bin/chromium')
+
+        # Perfil e downloads
+        co.set_user_data_path(self.cfg.user_data_dir)
         co.set_download_path(self.cfg.download_dir)
+
+        # Modo headless + flags necessárias para Linux/containers
+        co.set_headless(self.cfg.headless)
+        if self.cfg.headless:
+            co.set_argument('--headless=new')
+        # Flags recomendadas em container Linux para evitar falhas de sandbox e /dev/shm
+        co.set_argument('--no-sandbox')
+        co.set_argument('--disable-dev-shm-usage')
+
         page = WebPage(chromium_options=co, timeout=self.cfg.navigation_timeout)
         logger.info("Browser inicializado.")
         return page
@@ -23,7 +36,6 @@ class BrowserClient:
     def goto(self, url: str):
         with timed(f"Request iniciado | url={url}"):
             self.page.get(url)
-        # Tentar obter html length p/ 'bytes'
         try:
             html = self.page.html
             logger.debug(f"Request finalizado | url={url} | status=N/A | bytes={len(html)}")
@@ -35,7 +47,7 @@ class BrowserClient:
         return self.page.url
 
     def screenshot(self, path: str):
-        self.page.get_screenshot(path)
+        self.page.save_screenshot(path)
         logger.info(f"Persistência | sink=arquivo | arquivo={path}")
 
     def close(self):
