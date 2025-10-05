@@ -14,6 +14,7 @@ class CartService:
         'xpath://button[@id="imply-pay-neo-payment" and not(@disabled)]'
     )
     SEL_QR_IMG = 'css:img.imply-pay-qrcode'
+    SEL_PORTADORES_IMCOMPLETAS = "@ng-click=close('close')"
 
     def __init__(self, browser, cfg: AppConfig):
         self.page = browser.page
@@ -34,6 +35,14 @@ class CartService:
             btn.click()
 
         import time as _t
+        _t.sleep(1)
+
+        with timed("Checkout | informações do portadores incompletas"):
+            btn = self.page.ele(self.SEL_PORTADORES_IMCOMPLETAS, timeout=self.cfg.element_timeout)
+            if btn:
+                btn.click()
+                raise ElementNotFoundError("Informações do(s) portador(es) incompletas, verifique o campo 'Portador' nos produtos do carrinho.")
+                
         _t.sleep(1)
 
         # Detectar se já caiu no QR ou se precisa clicar em 'Seguir para o pagamento'
