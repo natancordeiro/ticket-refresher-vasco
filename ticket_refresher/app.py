@@ -8,6 +8,7 @@ from ticket_refresher.retry import with_retry
 from ticket_refresher.services.auth import AuthService
 from ticket_refresher.services.cart import CartService
 from ticket_refresher.services.payment import PaymentService
+from ticket_refresher.services.notifier import TelegramNotifier
 from ticket_refresher.persistence.json_sink import JsonSink
 from ticket_refresher.timing import timed
 from ticket_refresher.exceptions import AutomationError
@@ -20,6 +21,7 @@ class App:
         self.cart = CartService(self.browser, cfg)
         self.sink = JsonSink()
         self.payment = PaymentService(self.browser, cfg, self.sink)
+        self.notifier = TelegramNotifier(cfg)
         self._running = True
         signal.signal(signal.SIGINT, self._stop)
         signal.signal(signal.SIGTERM, self._stop)
@@ -51,16 +53,33 @@ class App:
         checkout_op = with_retry(self.cart.open_checkout_until_qr, self.cfg, op_name="open_checkout_until_qr")
         src = checkout_op()
 
-        # Persistência mínima do QR + pausa curta
         img_ele = self.browser.page.ele('css:img.imply-pay-qrcode', timeout=self.cfg.element_timeout)
-        if not img_ele:
+        payload = None
+        if img_ele:
+            payload = self.payment.capture_and_persist_qr(img_ele)
+        else:
             logger.warning("QR encontrado anteriormente, mas não mais presente para persistência de imagem.")
 
         self.payment.gentle_wait_after_qr()
 
-        # Voltar ao carrinho
         with timed("Ciclo | retorno para CARRINHO"):
             self.cart.back_to_cart()
+
+        # >>> ALERTA DE SUCESSO <<<
+        try:
+            if payload:
+                send_ok = with_retry(
+                    lambda: self.notifier.alert_success(
+                        current_url=payload.get("current_url", ""),
+                        qr_file=payload.get("qr_file", ""),
+                        next_minutes=self.cfg.renew_wait_minutes,
+                    ),
+                    self.cfg,
+                    op_name="telegram_alert_success",
+                )
+                send_ok()
+        except Exception as _e:
+            logger.warning(f"Telegram | falha ao enviar alerta de sucesso | {type(_e).__name__}: {_e}")
 
         # Aguardo longo p/ renovar expiração próximo ciclo
         minutes = self.cfg.renew_wait_minutes
@@ -75,12 +94,32 @@ class App:
                     self.run_once()
                 except AutomationError as e:
                     logger.error(f"Erro de automação | tipo={type(e).__name__} | mensagem={e}")
-                    # screenshot para diagnóstico
-                    self.browser.screenshot(f"{self.cfg.screenshot_dir}/error.png")
+                    shot = f"{self.cfg.screenshot_dir}/error.png"
+                    self.browser.screenshot(shot)
+                    try:
+                        send_err = with_retry(
+                            lambda: self.notifier.alert_error(type(e).__name__, str(e), screenshot_path=shot),
+                            self.cfg,
+                            op_name="telegram_alert_error",
+                        )
+                        send_err()
+                    except Exception as _e:
+                        logger.warning(f"Telegram | falha ao enviar alerta de erro | {type(_e).__name__}: {_e}")
                     time.sleep(5)
+
                 except Exception as e:
                     logger.critical(f"Erro inesperado | tipo={type(e).__name__} | mensagem={e}")
-                    self.browser.screenshot(f"{self.cfg.screenshot_dir}/unexpected.png")
+                    shot = f"{self.cfg.screenshot_dir}/unexpected.png"
+                    self.browser.screenshot(shot)
+                    try:
+                        send_err = with_retry(
+                            lambda: self.notifier.alert_error(type(e).__name__, str(e), screenshot_path=shot),
+                            self.cfg,
+                            op_name="telegram_alert_error",
+                        )
+                        send_err()
+                    except Exception as _e:
+                        logger.warning(f"Telegram | falha ao enviar alerta de erro | {type(_e).__name__}: {_e}")
                     time.sleep(5)
         finally:
             self.browser.close()

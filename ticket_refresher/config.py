@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field, EmailStr, ValidationError
+from typing import Optional
 from dotenv import load_dotenv
 import os, yaml
 
@@ -20,6 +21,12 @@ class AppConfig(BaseModel):
 
     login_email: EmailStr
     login_password: str
+
+    # Telegram
+    telegram_enabled: bool = False
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    telegram_parse_mode: str = "HTML"  # ou "Markdown"
 
     wait_qr_sleep: int = Field(default=10, ge=1)
     renew_wait_minutes: int = Field(default=20, ge=1)
@@ -45,7 +52,12 @@ def load_config() -> AppConfig:
 
         "login_email": os.getenv("LOGIN_EMAIL", "user@example.com"),
         "login_password": os.getenv("LOGIN_PASSWORD", "change_me"),
-
+        
+        "telegram_enabled": os.getenv("TELEGRAM_ENABLED", "false").lower() == "true",
+        "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN"),
+        "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID"),
+        "telegram_parse_mode": os.getenv("TELEGRAM_PARSE_MODE", "HTML"),
+        
         "wait_qr_sleep": int(os.getenv("WAIT_QR_SLEEP", "10")),
         "renew_wait_minutes": int(os.getenv("RENEW_WAIT_MINUTES", "20")),
         "navigation_timeout": int(os.getenv("NAVIGATION_TIMEOUT", "30")),
